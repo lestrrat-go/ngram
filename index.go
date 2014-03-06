@@ -1,5 +1,10 @@
 package ngram
 
+// ngram.Index is a naive implementation of an in-memmory index using
+// ngram tokens as its keys. It allows one to register strings, which
+// are tokenized and registered in an inverted index to the strings
+// they originated from, allowing us to search from a ngram token to
+// strings containing them.
 type Index struct {
   n int
   documents []string
@@ -13,9 +18,9 @@ func NewIndex(n int) *Index {
 func (i *Index) AddString(input string) {
   idx := len(i.documents)
   i.documents = append(i.documents, input)
-  n := New(i.n, input)
+  n := NewTokenize(i.n, input)
   seen := make(map[string]bool)
-  for _, s := range n.Segments() {
+  for _, s := range n.Tokens() {
     str := s.String()
     _, ok := seen[str]
     if ok {
@@ -37,11 +42,11 @@ func (i *Index) FindSimilarString(input string) []string {
 }
 
 func (i *Index) FindMatchingStrings(input string) []string {
-  n := New(i.n, input)
+  n := NewTokenize(i.n, input)
 
   seen := make(map[int]bool)
   indices := []int {}
-  for _, s := range n.Segments() {
+  for _, s := range n.Tokens() {
     str := s.String()
     list, ok := i.invertedIndex[str]
     if ! ok {

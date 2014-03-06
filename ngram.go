@@ -4,26 +4,28 @@ import(
   "unicode/utf8"
 )
 
-type NgramParser interface {
+type Tokenizer interface {
+  Tokenize()
+  Tokens() []*Token
   Text() string
   N() int
 }
 
-type Ngram struct {
+type Tokenize struct {
   n int
   text string
   parsed bool
-  segments []*ngramSegment
+  tokens []*Token
 }
 
-type ngramSegment struct {
-  n     *Ngram
+type Token struct {
+  n     *Tokenize
   start int
   end   int
 }
 
-func New(n int, input string) *Ngram {
-  return &Ngram {
+func NewTokenize(n int, input string) *Tokenize {
+  return &Tokenize {
     n,
     input,
     false,
@@ -31,15 +33,15 @@ func New(n int, input string) *Ngram {
   }
 }
 
-func (n *Ngram) N() int {
+func (n *Tokenize) N() int {
   return n.n
 }
 
-func (n *Ngram) Text() string {
+func (n *Tokenize) Text() string {
   return n.text
 }
 
-func (n *Ngram) Parse() {
+func (n *Tokenize) Parse() {
   if n.parsed {
     return
   }
@@ -70,39 +72,39 @@ func (n *Ngram) Parse() {
   }
   runes[ridx] = len(n.text)
 
-  // segments hold the indices into the input string
+  // tokens hold the indices into the input string
   // there are ridx - 1 runes in this string. for an 'n'-gram,
-  // there are ridx + 1 - ncount segments
+  // there are ridx + 1 - ncount tokens
   ncount := n.N()
-  segments := make([]*ngramSegment, ridx + 1 - ncount)
+  tokens := make([]*Token, ridx + 1 - ncount)
   for i := 0; i <= ridx - ncount; i++ {
     end := i + ncount
     if end >= len(runes) {
       break
     }
-    segments[i] = n.newSegment(runes[i], runes[end])
+    tokens[i] = n.NewToken(runes[i], runes[end])
   }
-  n.segments = segments
+  n.tokens = tokens
   n.parsed = true
 }
 
-func (n *Ngram) newSegment(start, end int) *ngramSegment {
-  return &ngramSegment { n, start, end }
+func (n *Tokenize) NewToken(start, end int) *Token {
+  return &Token { n, start, end }
 }
 
-func (n *Ngram) Segments() []*ngramSegment {
+func (n *Tokenize) Tokens() []*Token {
   n.Parse()
-  return n.segments
+  return n.tokens
 }
 
-func (s *ngramSegment) String() string {
+func (s *Token) String() string {
   return s.n.text[s.start:s.end]
 }
 
-func (s *ngramSegment) Start() int {
+func (s *Token) Start() int {
   return s.start
 }
 
-func (s *ngramSegment) End() int {
+func (s *Token) End() int {
   return s.end
 }

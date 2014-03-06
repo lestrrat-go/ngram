@@ -19,13 +19,13 @@ func TestNgramJapanese(t *testing.T) {
 func testNgrams(t *testing.T, input string) {
   runeCount := utf8.RuneCountInString(input)
   for i := 3; i < runeCount; i++ {
-    n := New(i, input)
-    segments := n.Segments()
-    if len(segments) != runeCount + 1 - i {
-      t.Errorf("There should be %d segments, but got %d", runeCount + 1 - i, len(segments))
+    n := NewTokenize(i, input)
+    tokens := n.Tokens()
+    if len(tokens) != runeCount + 1 - i {
+      t.Errorf("There should be %d tokens, but got %d", runeCount + 1 - i, len(tokens))
     }
 
-    for _, s := range segments {
+    for _, s := range tokens {
       count := utf8.RuneCountInString(s.String())
       if count != i {
         t.Errorf("Expected segment to have %d runes, got %d", i, count)
@@ -34,10 +34,10 @@ func testNgrams(t *testing.T, input string) {
   }
 }
 
-func ExampleNgram() {
+func ExampleTokenize() {
   input := `the quick red quick red fox red fox jumps fox jumps over jumps over the over the lazy the lazy brown lazy brown dog`
-  n := New(3, input) // Trigram
-  for _, s := range n.Segments() {
+  n := NewTokenize(3, input) // Trigram
+  for _, s := range n.Tokens() {
     log.Printf("segment = %s", s)
   }
 }
