@@ -45,6 +45,19 @@ func (n *Ngram) Parse() {
   }
 
   input := n.text
+
+  // "runes" is not reaully an array of runes, it holds indices to start/end
+  // of runes. so for example, if the string starts with a 3, 1, 2 byte runes,
+  // we'd see runes = { 0, 3, 4, 6 ... }.
+  //
+  // To get the first trigram, we'd do input[runes[0]:runes[3]].
+  // To get the first bigram, we'd do input[runes[0]:runes[2]], etc.
+  //
+  // runes is initialized as len(input) + 1 because we need to hold
+  // the maximum number of runes (max is when all the input is 1 byte chars,
+  // which is len(input)), plus the "end of string" marker. The end of string
+  // marker is required because we always need start + end markers to access
+  // the slice out of the original input. hence the + 1
   runes := make([]int, len(input) + 1)
   ridx  := 0 // rune index
   bidx  := 0 // byte index
@@ -59,7 +72,7 @@ func (n *Ngram) Parse() {
 
   // segments hold the indices into the input string
   // there are ridx - 1 runes in this string. for an 'n'-gram,
-  // there are maximum of ridx + 1 - ncount
+  // there are ridx + 1 - ncount segments
   ncount := n.N()
   segments := make([]*ngramSegment, ridx + 1 - ncount)
   for i := 0; i <= ridx - ncount; i++ {
