@@ -2,6 +2,7 @@ package ngram
 
 import(
   "unicode/utf8"
+  "github.com/deckarep/golang-set"
 )
 
 type Tokenizer interface {
@@ -16,6 +17,7 @@ type Tokenize struct {
   text string
   parsed bool
   tokens []*Token
+  set mapset.Set
 }
 
 type Token struct {
@@ -29,6 +31,7 @@ func NewTokenize(n int, input string) *Tokenize {
     n,
     input,
     false,
+    nil,
     nil,
   }
 }
@@ -86,6 +89,17 @@ func (n *Tokenize) Parse() {
   }
   n.tokens = tokens
   n.parsed = true
+}
+
+func (n *Tokenize) TokenSet() mapset.Set {
+  if n.set == nil {
+    s := mapset.NewSet()
+    for _, t := range n.Tokens() {
+      s.Add(t.String())
+    }
+    n.set = s
+  }
+  return n.set
 }
 
 func (n *Tokenize) NewToken(start, end int) *Token {

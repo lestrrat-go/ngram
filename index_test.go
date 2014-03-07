@@ -25,4 +25,10 @@ func TestSimilarText(t *testing.T) {
       }
     }
   }
+
+  // XXX This test sucks
+  x := i.FindSimilarStrings(`abc def`)
+  if len(x) != 2 {
+    t.Errorf("Expected 2 items, got %d", len(x))
+  }
 }

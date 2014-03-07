@@ -4,6 +4,8 @@ import (
   "crypto/md5"
   "errors"
   "fmt"
+  "math"
+  "github.com/deckarep/golang-set"
 )
 
 // ngram.Index is a naive implementation of an in-memmory index using
@@ -24,6 +26,8 @@ type Index struct {
   // a map of item.id => int is used so that we don't store
   // redundant ids
   invertedIndex InvertedIndex
+
+  minSimilarityScore float64
 }
 
 type IndexItem interface {
@@ -42,7 +46,8 @@ type Document struct {
 type IndexItemDepot map[string]*IndexItemWithMetadata
 type IndexItemWithMetadata struct {
   item IndexItem
-  ngrams int
+  // ngram.String() => count
+  ngrams mapset.Set
 }
 
 func NewDocument(id, content string) *Document {
@@ -63,7 +68,15 @@ func (d *Document) Content() string {
 }
 
 func NewIndex(n int) *Index {
-  return &Index { n, IndexItemDepot {} , InvertedIndex {} }
+  return &Index { n, IndexItemDepot {} , InvertedIndex {}, 0.0 }
+}
+
+func (i *Index) GetItemWithMetadata(id string) *IndexItemWithMetadata {
+  return i.items[id]
+}
+
+func (i *Index) GetItem(id string) IndexItem {
+  return i.items[id].item
 }
 
 func (i *Index) AddString(input string) (error) {
@@ -82,18 +95,17 @@ func (i *Index) AddItem(item IndexItem) (error) {
       ),
     )
   }
-  seen := make(map[string]bool)
 
   n := NewTokenize(i.n, item.Content())
   tokens := n.Tokens()
+  set := mapset.NewSet()
   for _, s := range tokens {
     str := s.String()
-    _, ok := seen[str]
-    if ok {
+    if set.Contains(str) {
       continue
     }
-    seen[str] = true
 
+    set.Add(str)
     h, ok := i.invertedIndex[str]
     if ! ok {
       h = map[string]int {}
@@ -102,16 +114,63 @@ func (i *Index) AddItem(item IndexItem) (error) {
     h[id]++
   }
 
-  ntokens := len(tokens)
   i.items[id] = &IndexItemWithMetadata {
     item,
-    ntokens,
+    set,
   }
   return nil
 }
 
-func (i *Index) FindSimilarString(input string) []string {
-  return nil // TODO
+func (i *Index) FindSimilarStrings(input string) []string {
+  items := i.FindSimilarItems(input)
+  ret   := make([]string, len(items))
+  for k, item := range items {
+    ret[k] = item.Content()
+  }
+  return ret
+}
+
+func (i *Index) FindSimilarItems(input string) []IndexItem {
+  n := NewTokenize(i.n, input)
+
+  ret := []IndexItem {}
+  inputset := n.TokenSet()
+  seen := mapset.NewSet()
+  for s := range inputset.Iter() {
+    // for each token, find matching document
+    itemids, ok := i.invertedIndex[s.(string)]
+    if !ok {
+      continue
+    }
+
+    for itemid := range itemids {
+      if seen.Contains(itemid) {
+        continue
+      }
+
+      seen.Add(itemid)
+
+      item := i.GetItemWithMetadata(itemid)
+      score := i.computeSimilarity(inputset, item.ngrams)
+      if score >= i.minSimilarityScore {
+        ret = append(ret, item.item)
+      }
+    }
+  }
+
+  return ret
+}
+
+func (i *Index) computeSimilarity(inputset, target mapset.Set) float64 {
+  intersection := inputset.Intersect(target)
+  total := target.Cardinality()
+  contained := intersection.Cardinality()
+  diff := total - contained
+
+  totalExp := math.Pow(float64(total), 1.0)
+  diffExp  := math.Pow(float64(diff), 1.0)
+
+  return (totalExp - diffExp) / totalExp
 }
 
 func (i *Index) FindMatchingStrings(input string) []IndexItem {
