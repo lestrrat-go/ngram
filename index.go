@@ -139,17 +139,19 @@ type MatchResult struct {
 }
 
 // search for similar strings in index, sending the search results
-// to the given channel
-func (i *Index) IterateSimilar(input string, min float64) <-chan MatchResult {
+// to the returned channel.
+// you can specify the minimum score and the maximum items to be fetched
+func (i *Index) IterateSimilar(input string, min float64, limit int) <-chan MatchResult {
   c := make(chan MatchResult)
-  go i.iterateSimilar(c, input, min)
+  go i.iterateSimilar(c, input, min, limit)
   return c
 }
 
-func (i *Index) iterateSimilar(c chan MatchResult, input string, min float64) {
+func (i *Index) iterateSimilar(c chan MatchResult, input string, min float64, limit int) {
   n := NewTokenize(i.n, input)
   inputset := n.TokenSet()
   seen := mapset.NewSet()
+  matched := 0
   for s := range inputset.Iter() {
     // for each token, find matching document
     itemids, ok := i.invertedIndex[s.(string)]
@@ -168,9 +170,14 @@ func (i *Index) iterateSimilar(c chan MatchResult, input string, min float64) {
       score := i.computeSimilarity(inputset, item.ngrams)
       if score >= min {
         c <- MatchResult { score, item.item }
+        matched++
+        if limit > 0 && matched >= limit {
+          goto DONE
+        }
       }
     }
   }
+DONE:
   close(c)
 }
 
@@ -187,7 +194,7 @@ func (i *Index) computeSimilarity(inputset, target mapset.Set) float64 {
 }
 
 func (i *Index) FindSimilarStrings(input string) []string {
-  c := i.IterateSimilar(input, i.minSimilarityScore)
+  c := i.IterateSimilar(input, i.minSimilarityScore, 0)
 
   ret := []string {}
   for r := range c {
@@ -197,7 +204,7 @@ func (i *Index) FindSimilarStrings(input string) []string {
 }
 
 func (i *Index) FindBestMatch(input string) string {
-  c := i.IterateSimilar(input, i.minSimilarityScore)
+  c := i.IterateSimilar(input, i.minSimilarityScore, 0)
 
   maxScore := 0.0
   var best IndexItem
@@ -211,7 +218,7 @@ func (i *Index) FindBestMatch(input string) string {
 }
 
 func (i *Index) FindMatchingStrings(input string) []string {
-  c := i.IterateSimilar(input, 0)
+  c := i.IterateSimilar(input, 0, 0)
 
   ret := []string {}
   for r := range c {
