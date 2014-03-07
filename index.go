@@ -13,10 +13,6 @@ import (
 // are tokenized and registered in an inverted index to the strings
 // they originated from, allowing us to search from a ngram token to
 // strings containing them.
-type ngrameKey struct {
-  id string // id of IndexItem
-  ntoken int // number of ngram tokens in the document
-}
 
 type InvertedIndex map[string]map[string]int
 type Index struct {
@@ -46,7 +42,6 @@ type Document struct {
 type IndexItemDepot map[string]*IndexItemWithMetadata
 type IndexItemWithMetadata struct {
   item IndexItem
-  // ngram.String() => count
   ngrams mapset.Set
 }
 
@@ -71,7 +66,11 @@ func NewIndex(n int) *Index {
   return &Index { n, IndexItemDepot {} , InvertedIndex {}, 0.0 }
 }
 
-func (i *Index) SetMinSimilarityScore(min float64) {
+func (i *Index) GetMinScore() float64 {
+  return i.minSimilarityScore
+}
+
+func (i *Index) SetMinScore(min float64) {
   i.minSimilarityScore = min
 }
 
@@ -125,19 +124,21 @@ func (i *Index) AddItem(item IndexItem) (error) {
   return nil
 }
 
-func (i *Index) FindSimilarStrings(input string) []string {
-  items := i.FindSimilarItems(input)
-  ret   := make([]string, len(items))
-  for k, item := range items {
-    ret[k] = item.Content()
-  }
-  return ret
+type MatchResult struct {
+  Score float64
+  Item  IndexItem
 }
 
-func (i *Index) FindSimilarItems(input string) []IndexItem {
-  n := NewTokenize(i.n, input)
+// search for similar strings in index, sending the search results
+// to the given channel
+func (i *Index) IterateSimilar(input string, min float64) <-chan MatchResult {
+  c := make(chan MatchResult)
+  go i.iterateSimilar(c, input, min)
+  return c
+}
 
-  ret := []IndexItem {}
+func (i *Index) iterateSimilar(c chan MatchResult, input string, min float64) {
+  n := NewTokenize(i.n, input)
   inputset := n.TokenSet()
   seen := mapset.NewSet()
   for s := range inputset.Iter() {
@@ -156,13 +157,12 @@ func (i *Index) FindSimilarItems(input string) []IndexItem {
 
       item := i.GetItemWithMetadata(itemid)
       score := i.computeSimilarity(inputset, item.ngrams)
-      if score >= i.minSimilarityScore {
-        ret = append(ret, item.item)
+      if score >= min {
+        c <- MatchResult { score, item.item }
       }
     }
   }
-
-  return ret
+  close(c)
 }
 
 func (i *Index) computeSimilarity(inputset, target mapset.Set) float64 {
@@ -177,32 +177,37 @@ func (i *Index) computeSimilarity(inputset, target mapset.Set) float64 {
   return (totalExp - diffExp) / totalExp
 }
 
-func (i *Index) FindMatchingStrings(input string) []IndexItem {
-  n := NewTokenize(i.n, input)
+func (i *Index) FindSimilarStrings(input string) []string {
+  c := i.IterateSimilar(input, i.minSimilarityScore)
 
-  seen := make(map[string]bool)
-  indices := []string {}
-  for _, s := range n.Tokens() {
-    str := s.String()
-    h, ok := i.invertedIndex[str]
-    if ! ok {
-      continue
-    }
-
-    for key, _ := range h {
-      _, ok := seen[key]
-      if ok {
-        continue
-      }
-      seen[key] = true
-
-      indices = append(indices, key)
-    }
-  }
-
-  ret := make([]IndexItem, len(indices))
-  for idx, k := range indices {
-    ret[idx] = i.items[k].item
+  ret := []string {}
+  for r := range c {
+    ret = append(ret, r.Item.Content())
   }
   return ret
 }
+
+func (i *Index) FindBestMatch(input string) string {
+  c := i.IterateSimilar(input, i.minSimilarityScore)
+
+  maxScore := 0.0
+  var best IndexItem
+  for r := range c {
+    if maxScore < r.Score {
+      maxScore = r.Score
+      best = r.Item
+    }
+  }
+  return best.Content()
+}
+
+func (i *Index) FindMatchingStrings(input string) []string {
+  c := i.IterateSimilar(input, 0)
+
+  ret := []string {}
+  for r := range c {
+    ret = append(ret, r.Item.Content())
+  }
+  return ret
+}
+
