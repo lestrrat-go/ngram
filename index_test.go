@@ -4,16 +4,21 @@ import (
   "testing"
 )
 
-func TestSimilarText(t *testing.T) {
-  i := NewIndex(3)
+func buildNgramIndex(n int, inputs []string) *Index {
+  i := NewIndex(n)
+  for _, t := range inputs {
+    i.AddString(t)
+  }
+  return i
+}
+
+func TestBasic(t *testing.T) {
   texts := []string {
     `abcdefghijklmnopqrstuvwxyz`,
     `1234567890abc1234567890`,
     `1234578990`,
   }
-  for _, t := range texts {
-    i.AddString(t)
-  }
+  i := buildNgramIndex(3, texts)
 
   matches := i.FindMatchingStrings(`abc def`)
   if len(matches) != 2 {
@@ -30,5 +35,22 @@ func TestSimilarText(t *testing.T) {
   x := i.FindSimilarStrings(`abc def`)
   if len(x) != 2 {
     t.Errorf("Expected 2 items, got %d", len(x))
+  }
+}
+
+func TestIndex_SimilarStrings(t *testing.T) {
+  i := buildNgramIndex(3, []string { "abc", "abcabc", "aabc" });
+
+  var ret []string
+
+  ret = i.FindSimilarStrings("abc")
+  if len(ret) != 3 {
+    t.Logf("Expected to match 3 items, got %d", len(ret))
+  }
+
+  i.SetMinSimilarityScore(0.9)
+  ret = i.FindSimilarStrings("abc")
+  if len(ret) != 1 {
+    t.Logf("Expected to match 1 item, got %d", len(ret))
   }
 }

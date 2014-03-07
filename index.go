@@ -71,6 +71,10 @@ func NewIndex(n int) *Index {
   return &Index { n, IndexItemDepot {} , InvertedIndex {}, 0.0 }
 }
 
+func (i *Index) SetMinSimilarityScore(min float64) {
+  i.minSimilarityScore = min
+}
+
 func (i *Index) GetItemWithMetadata(id string) *IndexItemWithMetadata {
   return i.items[id]
 }
