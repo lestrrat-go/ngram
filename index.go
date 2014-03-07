@@ -24,6 +24,7 @@ type Index struct {
   invertedIndex InvertedIndex
 
   minSimilarityScore float64
+  warp float64
 }
 
 type IndexItem interface {
@@ -63,7 +64,7 @@ func (d *Document) Content() string {
 }
 
 func NewIndex(n int) *Index {
-  return &Index { n, IndexItemDepot {} , InvertedIndex {}, 0.0 }
+  return &Index { n, IndexItemDepot {} , InvertedIndex {}, 0.0, 1.0 }
 }
 
 func (i *Index) GetMinScore() float64 {
@@ -72,6 +73,14 @@ func (i *Index) GetMinScore() float64 {
 
 func (i *Index) SetMinScore(min float64) {
   i.minSimilarityScore = min
+}
+
+func (i *Index) GetWarp() float64 {
+  return i.warp
+}
+
+func (i *Index) SetWarp(w float64) {
+  i.warp = w
 }
 
 func (i *Index) GetItemWithMetadata(id string) *IndexItemWithMetadata {
@@ -171,8 +180,8 @@ func (i *Index) computeSimilarity(inputset, target mapset.Set) float64 {
   contained := intersection.Cardinality()
   diff := total - contained
 
-  totalExp := math.Pow(float64(total), 1.0)
-  diffExp  := math.Pow(float64(diff), 1.0)
+  totalExp := math.Pow(float64(total), i.warp)
+  diffExp  := math.Pow(float64(diff), i.warp)
 
   return (totalExp - diffExp) / totalExp
 }
