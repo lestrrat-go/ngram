@@ -34,6 +34,21 @@ func testNgrams(t *testing.T, input string) {
   }
 }
 
+func TestTokenize_TokenSet(t *testing.T) {
+  input := `the quick red quick red fox red fox jumps fox jumps over jumps over the over the lazy the lazy brown lazy brown dog`
+  tok := NewTokenize(3, input)
+  set := tok.TokenSet()
+
+  // Check uniqueness
+  uniq := map[string]bool {}
+  for str := range set.Iter() {
+    if _, ok := uniq[str.(string)]; ok {
+      t.Errorf("token %s appears multiple times!", str)
+    }
+    uniq[str.(string)] = true
+  }
+}
+
 func ExampleTokenize() {
   input := `the quick red quick red fox red fox jumps fox jumps over jumps over the over the lazy the lazy brown lazy brown dog`
   n := NewTokenize(3, input) // Trigram
