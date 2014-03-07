@@ -51,7 +51,7 @@ func (n *Tokenize) Parse() {
 
   input := n.text
 
-  // "runes" is not reaully an array of runes, it holds indices to start/end
+  // "runes" is not really an array of runes, it holds indices to start/end
   // of runes. so for example, if the string starts with a 3, 1, 2 byte runes,
   // we'd see runes = { 0, 3, 4, 6 ... }.
   //
@@ -102,6 +102,9 @@ func (n *Tokenize) TokenSet() mapset.Set {
   return n.set
 }
 
+// A Token holds a pointer to the original tokenizer struct that
+// created it. This is used to create the textual representation of the
+// token (see String()) w/o having to allocate memory for it
 func (n *Tokenize) NewToken(start, end int) *Token {
   return &Token { n, start, end }
 }
