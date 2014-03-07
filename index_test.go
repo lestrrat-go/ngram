@@ -20,7 +20,7 @@ func TestSimilarText(t *testing.T) {
     t.Errorf("Expected 2 matches, got only %d", len(matches))
   } else {
     for _, s := range matches {
-      if s != texts[0] && s != texts[1] {
+      if s.Content() != texts[0] && s.Content() != texts[1] {
         t.Errorf("Expected to NOT match %s", s)
       }
     }
