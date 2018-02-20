@@ -30,7 +30,7 @@ func ExampleIndex () {
   limit := 0
   c := trigram.IterateSimilar(` ... your input ...`, minScore, limit)
   for r := range c {
-    log.Printf("Item id %s matched with score %d", r.Item.Id(), r.Score)
+    log.Printf("Item id %s matched with score %f", r.Item.Id(), r.Score)
     log.Printf("Content of Item was %s", r.Item.Content())
   }
 }
